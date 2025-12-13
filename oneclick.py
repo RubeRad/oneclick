@@ -112,15 +112,14 @@ def autofill(puz, can):
     didsumpn = False
     for r in range(9):
         for c in range(9):
-            cdict = {}
+            vset = set()
             for v in range(9):
                 if can[r][c][v]:
-                    cdict[v] = True
-                    if len(cdict)>1:
+                    vset.add(v)
+                    if len(vset)>1:
                         break # 2+ candidates for this [r][c]
-            if len(cdict)==1:
-                v = next(iter(cdict))
-                puz[r][c] = v
+            if len(vset)==1:
+                puz[r][c] = vset.pop()
                 for vv in range(9):
                     can[r][c][v] = False
                 didsumpn = True
@@ -139,55 +138,51 @@ def done(puz):
 
 # what sudokuslam.com 'do I need a hint?' calls 'easy'
 def find_1_row_col_block(can):
-    # put these in a dictionary first because they might duplicate
+    # put these in a set because they might duplicate
     # like if a candidates grid has a single True at can[1][2][3]==True
     # that's a SINGLE for row 1, and col 2, and block 0
-    easydict = {}
+    easyset = set()
     for val in range(9):
         for i in range(9): # check all the things
             # is there a row such that only one square has candidate val?
             row = i
-            cdict = {}
+            cset = set()
             for col in range(9):
                 if can[row][col][val]:
-                    cdict[col]=col
-                if len(cdict)>1:
+                    cset.add(col)
+                if len(cset)>1:
                     break
-            if len(cdict)==1: # yup!
-                col = next(iter(cdict))
-                easydict[ ('SINGLE', row, col, val) ] = 1
+            if len(cset)==1: # yup!
+                easyset.add( ('SINGLE', row, cset.pop(), val) )
 
             # is there a col such that only one square has candidate val?
             col = i
-            rdict = {}
+            rset = set()
             for row in range(9):
                 if can[row][col][val]:
-                    rdict[row]=row
-                if len(rdict)>1:
+                    rset.add(row)
+                if len(rset)>1:
                     break
-            if len(rdict)==1: # yup!
-                row = next(iter(rdict))
-                easydict[ ('SINGLE', row, col, val) ] = 1
+            if len(rset)==1: # yup!
+                easyset.add( ('SINGLE', rset.pop(), col, val) )
 
             # is there a block such that only one square has candidate val?
             br = i//3
             bc = i%3
-            bdict = {}
+            bset = set()
             for ii in range(9):
-                rr = ii//3
-                cc = ii%3
-                if can[br*3+rr][bc*3+cc][val]:
-                    bdict[ii]=ii
-                    if len(bdict)>1:
+                row = br*3+ii//3
+                col = bc*3+ii%3
+                if can[row][row][val]:
+                    bset.add( (row,col) )
+                    if len(bset)>1:
                         break
-            if len(bdict)==1: # yup!
-                ii = next(iter(bdict))
-                row = br*3 + ii//3
-                col = bc*3 + ii%3
-                easydict[ ('SINGLE', row, col, val) ] = 1
+            if len(bset)==1: # yup!
+                row,col = bset.pop()
+                easyset.add( ('SINGLE', row, col, val) )
 
-    # flatten out to a list
-    return list(easydict.keys())
+    # convert out to a list
+    return list(easyset)
 
 
 # a spear is a block that has all candidates in the same row
@@ -199,26 +194,24 @@ def find_spears(can):
         for br in range(3):
             for bc in range(3):
                 # does block br,bc have a spear of candidate v?
-                bkrows = {}
-                bkcols = {}
+                bkrows = set()
+                bkcols = set()
                 for rr in range(3):
                     row = br*3+rr
                     for cc in range(3):
                         col = bc*3+cc
                         if can[row][col][v]:
-                            bkrows[rr] = rr
-                            bkcols[cc] = cc
+                            bkrows.add(rr)
+                            bkcols.add(cc)
                 if len(bkrows)==1: # it's a horizontal spear
-                    bkrow = next(iter(bkrows))
-                    row = br*3+bkrow
+                    row = br*3+bkrows.pop()
                     for obc in range(3): # throw across row other block columns
                         if obc != bc:
                             for cc in range(3):
                                 if can[row][obc*3+cc][v]:
                                     spears.append( ('SPEAR', row, obc*3+cc, v) )
                 if len(bkcols)==1: # it's a vertical spear
-                    bkcol = next(iter(bkcols))
-                    col = bc*3+bkcol
+                    col = bc*3+bkcols.pop()
                     for obr in range(3): # throw down col to other block rows
                         if obr != br:
                             for rr in range(3):
@@ -232,30 +225,31 @@ def find_spears(can):
 def find_forks(can):
     forks = []
     for v in range(9):
-        print('v', v)
+        #print('v', v)
         for nbi in range(3): # which block is NOT part of the fork?
             bi0 = 1 if nbi==0 else 0 # bi0 will be 0 unless nbi pushes it up to 1
             bi1 = 1 if nbi==2 else 2 # bi0 will be 2 unless nbi pushes it dn to 1
             bfk = 3-(bi0+bi1) # block that is forked
-            print('nbi', nbi, bi0, bi1, bfk)
+            #print('nbi', nbi, bi0, bi1, bfk)
             for oi in range(3): # other block index
-                print('oi',oi)
+                #print('oi',oi)
                 # does row oi have a fork in cols bi0,bi1 against block bfk?
                 # Where are all the candidates in the two blocks?
-                bkrows0 = {}
-                bkrows1 = {}
+                bkrows0 = set()
+                bkrows1 = set()
                 for rr in range(3):
                     row = oi*3+rr
                     for cc in range(3):
                         col0 = bi0*3+cc
                         col1 = bi1*3+cc
                         if can[row][col0][v]:
-                            bkrows0[rr]=rr
+                            bkrows0.add(rr)
                         if can[row][col1][v]:
-                            bkrows1[rr]=rr
-                if len(bkrows0)==2 and len(bkrows1)==2 and bkrows0.keys()==bkrows1.keys():
+                            bkrows1.add(rr)
+                if len(bkrows0)==2 and len(bkrows1)==2 and bkrows0==bkrows1:
                     # it's a fork! stab the block in column bfk
-                    rr0,rr1 = list(bkrows0.keys())
+                    rr0 = bkrows0.pop()
+                    rr1 = bkrows0.pop()
                     for cc in range(3):
                         col = bfk*3+cc
                         row = oi*3+rr0
@@ -267,20 +261,21 @@ def find_forks(can):
 
                 # does col oi have a fork in cols bi0bi1 against block bfk?
                 # Where are all the candidates in the two blocks?
-                bkcols0 = {}
-                bkcols1 = {}
+                bkcols0 = set()
+                bkcols1 = set()
                 for cc in range(3):
                     col = oi * 3 + cc
                     for rr in range(3):
                         row0 = bi0 * 3 + rr
                         row1 = bi1 * 3 + rr
                         if can[row0][col][v]:
-                            bkcols0[cc] = cc
+                            bkcols0.add(cc)
                         if can[row1][col][v]:
-                            bkcols1[cc] = cc
-                if len(bkcols0) == 2 and len(bkcols1) == 2 and bkcols0.keys() == bkcols1.keys():
+                            bkcols1.add(cc)
+                if len(bkcols0) == 2 and len(bkcols1) == 2 and bkcols0 == bkcols1:
                     # it's a fork! stab the block in row bfk
-                    cc0, cc1 = list(bkcols0.keys())
+                    cc0 = bkcols0.pop()
+                    cc1 = bkcols0.pop()
                     for rr in range(3):
                         row = bfk * 3 + rr
                         col = oi * 3 + cc0
