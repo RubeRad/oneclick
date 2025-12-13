@@ -71,12 +71,20 @@ def col_indices(c):
         rcs.append( (r,c) )
     return(rcs)
 
-def box_indices(br,bc):
+def box_indices(arg1,arg2=None):
+    if arg2 is None:
+        br=arg1//3
+        bc=arg1%3
+    else:
+        br=arg1
+        bc=arg2
     rcs = []
     for r in range(3):
         for c in range(3):
             rcs.append( (br*3+r, bc*3+c) )
     return(rcs)
+
+
 
 # go through and turn off candidates based on values that are set
 # sudokuslam.com 'sumo mode'
@@ -300,23 +308,6 @@ def find_forks(can):
     return forks
 
 
-def find_moves(can):
-    moves = find_1_row_col_block(can)
-    moves.extend( find_spears(can) )
-    moves.extend( find_forks(can) )
-    moves.extend( find_subsets_2(can) )
-    return moves
-
-
-def apply_move(puz, can, mov):
-    t,r,c,i = mov
-    if   t == 'SINGLE':
-        puz[r][c] = i      # set it into the puzzle
-        for v in range(9): # erase all candidates
-            can[r][c][v] = False
-    elif t == 'SPEAR' or t == 'FORK' or t == '2SET':
-        can[r][c][i] = False # turn it off
-
 # instead of an array of 9x True/False per [r][c], have each [r][c]
 # hold a set of viable candidates; hopefully will make more performant
 def candisets(candidates):
@@ -342,7 +333,7 @@ def find_subsets_2(can):
 
     # in any row/col/block i, are there 2 cells with exactly the same 2 candidates?
     for i in range(9):
-        for rcs in ( row_indices(i), col_indices(i), box_indices(i//3,i%3)):
+        for rcs in ( row_indices(i), col_indices(i), box_indices(i)):
             rcs2 = []
             for r,c in rcs:
                 if len(cs[r][c])==2:
@@ -365,33 +356,85 @@ def find_subsets_2(can):
 
     return  moves
 
+def find_subsets_3(can):
+    moves = []
+    cs = candisets(can)
+    # in any row/col/block idx, are there 3 cells with the same 3 candidates?
+    for idx in range(9):
+        for rcs in ( row_indices(idx), col_indices(idx), box_indices(idx) ):
+            rcs3 = []
+            for r,c in rcs:
+                if len(cs[r][c])==2 or len(cs[r][c])==3:
+                    rcs3.append( (r,c) )
+            if len(rcs3)<3:
+                continue
+
+            for i in range(len(rcs3)):
+                ri,ci = rcs3[i]
+                for j in range(i+1,len(rcs3)):
+                    rj,cj = rcs3[j]
+                    uu = cs[ri][ci].union(cs[rj][cj])
+                    if len(uu)>3:
+                        continue
+                    for k in range(j+1,len(rcs3)):
+                        rk,ck = rcs3[k]
+                        uuu = uu.union(cs[rk][ck])
+                        if len(uuu) == 3:
+                            for r,c in rcs:
+                                if r==ri and c==ci: continue
+                                if r==rj and c==cj: continue
+                                if r==rk and c==ck: continue
+                                for v in uuu:
+                                    if can[r][c][v]:
+                                        moves.append( ('3SET', r, c, v) )
+    return moves
+
+def find_moves(can):
+    moves = find_1_row_col_block(can)
+    moves.extend( find_spears(can) )
+    moves.extend( find_forks(can) )
+    moves.extend( find_subsets_2(can) )
+    moves.extend( find_subsets_3(can) )
+    return moves
+
+
+def apply_move(puz, can, mov):
+    t,r,c,i = mov
+    if   t == 'SINGLE':
+        puz[r][c] = i      # set it into the puzzle
+        for v in range(9): # erase all candidates
+            can[r][c][v] = False
+    elif t == 'SPEAR' or t == 'FORK' or t == '2SET':
+        can[r][c][i] = False # turn it off
+
 
 if __name__ == '__main__':
-    puzl = SudokuGenerator(difficulty='hard').get_puzzle()
+    puzl = SudokuGenerator(difficulty='medium').get_puzzle()
 
-    #puzl = ['2..9.1583',
-    #       '....8..7.',
-    #       '.83.7.96.',
-    #       '72...6.35',
-    #       '..6835.2.',
-    #       '...7.....',
-    #       '64..97.5.',
-    #       '19.3..64.',
-    #       '3..64219.']
+    # sudokuslam.com medium puzzle mid-solve
+    # involves 'hard' (both 2SET and 3SET moves)
+    if False:
+        # sudokuslam.com medium puzzle involving 2SET/3SET moves
+        # mid-solve
+        puzl = ['2.......9',
+                '.89.....6',
+                '.3...5.41',
+                '.4.783192',
+                '.1.529468',
+                '892416753',
+                '.....261.',
+                '......9.7',
+                '.....13..']
+        puzl = ['2........',
+                '.89......',
+                '.3...5.41',
+                '.4.7.3..2',
+                '.1.5.....',
+                '89.4...5.',
+                '.....261.',
+                '......9.7',
+                '.....13..']
 
-    # sudokuslam.com medium puzzle mid-solve, only available moves are 'hard'
-    puzl = ['861349725',
-            '273568491',
-            '495..2638',
-           '..6...8..',
-            '......9..',
-            '..8.5.1.2',
-            '.8..3527.',
-            '.5...6384',
-            '.....751.']
-
-    #for row in puz:
-    #    print(row)
 
     sudoku = gridify(puzl)
     print_puzzle(sudoku)

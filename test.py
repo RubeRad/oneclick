@@ -89,8 +89,28 @@ class OneClickTester(unittest.TestCase):
 
         ss = find_subsets_2(can)
         # remove all the 1 and 2 candidates from 7 boxes
-        s.assertEqual(14, len(moves))
+        s.assertEqual(14, len(ss))
 
+
+    def test3subsets(s):
+        can = all_candidates(False)
+        # aaa 456 45 a  46aa
+        for r in (0,1,2,5,7,8):
+            for v in range(9):
+                can[r][3][v] = True
+        can[3][3][4] = True
+        can[3][3][5] = True
+        can[3][3][6] = True
+
+        can[4][3][4] = True
+        can[4][3][5] = True
+
+        can[6][3][4] = True
+        can[6][3][6] = True
+
+        sss = find_subsets_3(can)
+        # remove all the 4,5,6 candidates from 6 boxes
+        s.assertEqual(18, len(sss))
 
 
 unittest.main()
