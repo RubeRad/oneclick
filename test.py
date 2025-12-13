@@ -34,5 +34,32 @@ class OneClickTester(unittest.TestCase):
 
         s.assertEqual(12, len(ss))
 
+    def testForks(s):
+        # 333 333 333
+        #         333
+        # 333 333 333
+        can = all_candidates(False)
+        for c in range(9):
+            can[6][c][3] = True
+            can[8][c][3] = True
+            if c>=6:
+                can[7][c][3] = True
+
+        # 44
+        # 44
+        # 44
+        # 444
+        # 444
+        # 444
+        # 44
+        # 44
+        for r in range(9):
+            can[r][0][4] = True
+            can[r][1][4] = True
+            if r>=3 and r<6:
+                can[r][2][4] = True
+        ff = find_forks(can)
+
+        s.assertEqual(12, len(ff))
 
 unittest.main()

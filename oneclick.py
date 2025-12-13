@@ -159,6 +159,73 @@ def find_spears(can):
                                     spears.append( ('SPEAR', obr*3+rr, col, v) )
     return spears
 
+# A fork is when two blocks in the same row(col) have candidates all in the same
+# two rows(cols), which eliminates candidates in those rows(cols) in the third
+# block. the other part of sudokuslam.com 'little tricky'
+def find_forks(can):
+    forks = []
+    for v in range(9):
+        print('v', v)
+        for nbi in range(3): # which block is NOT part of the fork?
+            bi0 = 1 if nbi==0 else 0 # bi0 will be 0 unless nbi pushes it up to 1
+            bi1 = 1 if nbi==2 else 2 # bi0 will be 2 unless nbi pushes it dn to 1
+            bfk = 3-(bi0+bi1) # block that is forked
+            print('nbi', nbi, bi0, bi1, bfk)
+            for oi in range(3): # other block index
+                print('oi',oi)
+                # does row oi have a fork in cols bi0,bi1 against block bfk?
+                # Where are all the candidates in the two blocks?
+                bkrows0 = {}
+                bkrows1 = {}
+                for rr in range(3):
+                    row = oi*3+rr
+                    for cc in range(3):
+                        col0 = bi0*3+cc
+                        col1 = bi1*3+cc
+                        if can[row][col0][v]:
+                            bkrows0[rr]=rr
+                        if can[row][col1][v]:
+                            bkrows1[rr]=rr
+                if len(bkrows0)==2 and len(bkrows1)==2 and bkrows0.keys()==bkrows1.keys():
+                    # it's a fork! stab the block in column bfk
+                    rr0,rr1 = list(bkrows0.keys())
+                    for cc in range(3):
+                        col = bfk*3+cc
+                        row = oi*3+rr0
+                        if can[row][col][v]:
+                            forks.append( ('FORK', row, col, v) )
+                        row = oi*3+rr1
+                        if can[row][col][v]:
+                            forks.append( ('FORK', row, col, v) )
+
+                # does col oi have a fork in cols bi0bi1 against block bfk?
+                # Where are all the candidates in the two blocks?
+                bkcols0 = {}
+                bkcols1 = {}
+                for cc in range(3):
+                    col = oi * 3 + cc
+                    for rr in range(3):
+                        row0 = bi0 * 3 + rr
+                        row1 = bi1 * 3 + rr
+                        if can[row0][col][v]:
+                            bkcols0[cc] = cc
+                        if can[row1][col][v]:
+                            bkcols1[cc] = cc
+                if len(bkcols0) == 2 and len(bkcols1) == 2 and bkcols0.keys() == bkcols1.keys():
+                    # it's a fork! stab the block in row bfk
+                    cc0, cc1 = list(bkcols0.keys())
+                    for rr in range(3):
+                        row = bfk * 3 + rr
+                        col = oi * 3 + cc0
+                        if can[row][col][v]:
+                            forks.append(('FORK', row, col, v))
+                        col = oi * 3 + cc1
+                        if can[row][col][v]:
+                            forks.append(('FORK', row, col, v))
+    return forks
+
+
+
 
 
 def apply_moves(p, can, moves):
