@@ -32,11 +32,11 @@ def print_it(puz):
             print('')
 
 
-def all_candidates(puz):
+def all_candidates(val=True):
     # fill in all candidates as 1 to start
     true9 = []
     for i in range(9):
-        true9.append(True)
+        true9.append(val)
     true99 = []
     for i in range(9):
         true99.append(copy.deepcopy(true9))
@@ -106,6 +106,7 @@ def turn_off_candidates(puz,can, verbose=False):
 
     return didsumpn
 
+# what sudokuslam.com 'do I need a hint?' calls 'easy'
 def find_single_candidates(can):
     rcis = []
     for r in range(9):
@@ -119,52 +120,94 @@ def find_single_candidates(can):
                         break
                     which = i
             if count==1:
-                rcis.append( (r,c,which) )
+                rcis.append( ('SINGLE', r,c,which) )
     return rcis
 
+# a spear is a block that has all candidates in the same row
+# or column, which eliminates candidates in 2 other blocks
+# this is part of what sudokuslam.com calls 'little tricky'
+def find_spears(can):
+    spears = []
+    for v in range(9):
+        for br in range(3):
+            for bc in range(3):
+                # does block br,bc have a spear of candidate v?
+                bkrows = {}
+                bkcols = {}
+                for rr in range(3):
+                    row = br*3+rr
+                    for cc in range(3):
+                        col = bc*3+cc
+                        if can[row][col][v]:
+                            bkrows[rr] = rr
+                            bkcols[cc] = cc
+                if len(bkrows)==1: # it's a horizontal spear
+                    bkrow = next(iter(bkrows))
+                    row = br*3+bkrow
+                    for obc in range(3): # throw across row other block columns
+                        if obc != bc:
+                            for cc in range(3):
+                                if can[row][obc*3+cc][v]:
+                                    spears.append( ('SPEAR', row, obc*3+cc, v) )
+                if len(bkcols)==1: # it's a vertical spear
+                    bkcol = next(iter(bkcols))
+                    col = bc*3+bkcol
+                    for obr in range(3): # throw down col to other block rows
+                        if obr != br:
+                            for rr in range(3):
+                                if can[obr*3+rr][col][v]:
+                                    spears.append( ('SPEAR', obr*3+rr, col, v) )
+    return spears
 
-def apply_moves(p, moves):
-    for r,c,i in moves:
-        p[r][c] = i
+
+
+def apply_moves(p, can, moves):
+    for t,r,c,i in moves:
+        if   t == 'SINGLE':
+            p[r][c] = i        # set it
+            for v in range(9): # erase all candidates
+                can[r][c][v] = False
+        elif t == 'SPEAR' or t == 'FORK' or t == 'SUBSET':
+            can[r][c][can] = False # turn it off
+
+
+if __name__ == '__main__':
+    puz = SudokuGenerator(difficulty='medium').get_puzzle()
+
+    puz = ['2..9.1583',
+           '....8..7.',
+           '.83.7.96.',
+           '72...6.35',
+           '..6835.2.',
+           '...7.....',
+           '64..97.5.',
+           '19.3..64.',
+           '3..64219.']
 
 
 
-puz = SudokuGenerator(difficulty='medium').get_puzzle()
+    #for row in puz:
+    #    print(row)
 
-puz = ['2..9.1583',
-       '....8..7.',
-       '.83.7.96.',
-       '72...6.35',
-       '..6835.2.',
-       '...7.....',
-       '64..97.5.',
-       '19.3..64.',
-       '3..64219.']
+    gp = gridify(puz)
+    print_it(gp)
+
+    can = all_candidates()
 
 
 
-#for row in puz:
-#    print(row)
+    #print(can)
 
-gp = gridify(puz)
-print_it(gp)
-
-can = all_candidates(gp)
-
-
-
-#print(can)
-
-turn_off_candidates(gp, can)
-
-while True:
-    onesies = find_single_candidates(can)
-    if len(onesies) == 0:
-        break
-    apply_moves(gp, onesies)
     turn_off_candidates(gp, can)
 
-print_it(gp)
+    while True:
+        onesies = find_single_candidates(can)
+        if len(onesies) == 0:
+            break
+        apply_moves(gp, can, onesies)
+        turn_off_candidates(gp, can)
+
+    print_it(gp)
 
 
 
