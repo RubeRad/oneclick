@@ -17,7 +17,7 @@ def gridify(stringpuz):
         gpuz.append(ary)
     return gpuz
 
-def print_it(puz):
+def print_puzzle(puz):
     for ri in range(9):
         for ci in range(9):
             v = puz[ri][ci]
@@ -30,6 +30,19 @@ def print_it(puz):
         print('')
         if ri%3==2:
             print('')
+
+def print_candidates(can):
+    for r in range(9):
+        for rr in range(3):
+            for c in range(9):
+                for cc in range(3):
+                    v = rr*3+cc
+                    if can[r][c][v]: print(v,   end='')
+                    else:            print(' ', end='')
+                print('|', end='')
+            print('')
+        print('------------------------------------')
+
 
 
 def all_candidates(val=True):
@@ -287,25 +300,25 @@ def find_forks(can):
     return forks
 
 
-def find_moves(puz, can):
-    moves = find_single_candidates(can)
+def find_moves(can):
+    moves = find_1_row_col_block(can)
     moves.extend( find_spears(can) )
     moves.extend( find_forks(can) )
     return moves
 
 
-def apply_moves(p, can, moves):
-    for t,r,c,i in moves:
-        if   t == 'SINGLE':
-            p[r][c] = i        # set it
-            for v in range(9): # erase all candidates
-                can[r][c][v] = False
-        elif t == 'SPEAR' or t == 'FORK' or t == 'SUBSET':
-            can[r][c][can] = False # turn it off
+def apply_move(puz, can, mov):
+    t,r,c,i = mov
+    if   t == 'SINGLE':
+        puz[r][c] = i      # set it into the puzzle
+        for v in range(9): # erase all candidates
+            can[r][c][v] = False
+    elif t == 'SPEAR' or t == 'FORK' or t == 'SUBSET':
+        can[r][c][i] = False # turn it off
 
 
 if __name__ == '__main__':
-    puzl = SudokuGenerator(difficulty='easy').get_puzzle()
+    puzl = SudokuGenerator(difficulty='hard').get_puzzle()
 
     #puz = ['2..9.1583',
     #       '....8..7.',
@@ -321,20 +334,38 @@ if __name__ == '__main__':
     #    print(row)
 
     sudoku = gridify(puzl)
-    print_it(sudoku)
+    print_puzzle(sudoku)
     candidates = all_candidates()
+    turn_off_candidates(sudoku, candidates)
+    print_candidates(candidates)
+    cascade(sudoku, candidates)
+    if done(sudoku):
+        print('All done!')
+        print_puzzle(sudoku)
 
-    while True:
-        cascade(sudoku, candidates)
-        moves = find_moves(candidates)
-        if (len(moves)==1):
-            print("There is just one move!")
-            print_it(sudoku)
+    else:
+        # solution loop
+        while True:
+            moves = find_moves(candidates)
+            nmoves = len(moves)
+            if nmoves==0:
+                print("can't find any moves")
+                print_puzzle(sudoku)
+                print_candidates(candidates)
+                break
 
-        apply_
+            print(f'there are {nmoves} available, first is {moves[0]}')
+            onemove = (nmoves==1)
+            if onemove:
+                print("There is just one move!")
+                print_puzzle(sudoku)
+                print_candidates(candidates)
+            apply_move(sudoku, candidates, moves[0])
 
-
-
-
-
-
+            cascade(sudoku, candidates)
+            if done(sudoku):
+                if onemove:
+                    print('Single move triggered winning cascade!')
+                print('All done!')
+                print_puzzle(sudoku)
+                break
