@@ -65,7 +65,8 @@ def box_indices(br,bc):
             rcs.append( (br*3+r, bc*3+c) )
     return(rcs)
 
-# go through and turn off candidates 
+# go through and turn off candidates based on values that are set
+# sudokuslam.com 'sumo mode'
 def turn_off_candidates(puz,can, verbose=False):
     didsumpn = False
     for r in range(9):
@@ -106,22 +107,88 @@ def turn_off_candidates(puz,can, verbose=False):
 
     return didsumpn
 
-# what sudokuslam.com 'do I need a hint?' calls 'easy'
-def find_single_candidates(can):
-    rcis = []
+# sudokuslam.com 'autofill obvious numbers'
+def autofill(puz, can):
+    didsumpn = False
     for r in range(9):
         for c in range(9):
-            count=0
-            which=None
-            for i in range(9):
-                if can[r][c][i]:
-                    count += 1
-                    if count > 1:
+            cdict = {}
+            for v in range(9):
+                if can[r][c][v]:
+                    cdict[v] = True
+                    if len(cdict)>1:
+                        break # 2+ candidates for this [r][c]
+            if len(cdict)==1:
+                v = next(iter(cdict))
+                puz[r][c] = v
+                for vv in range(9):
+                    can[r][c][v] = False
+                didsumpn = True
+    return didsumpn
+
+def cascade(puz,can):
+    while turn_off_candidates(puz,can) or autofill(puz,can):
+        pass
+
+def done(puz):
+    for r in range(9):
+        for c in range(9):
+            if puz[r][c] is None:
+                return False
+    return True
+
+# what sudokuslam.com 'do I need a hint?' calls 'easy'
+def find_1_row_col_block(can):
+    # put these in a dictionary first because they might duplicate
+    # like if a candidates grid has a single True at can[1][2][3]==True
+    # that's a SINGLE for row 1, and col 2, and block 0
+    easydict = {}
+    for val in range(9):
+        for i in range(9): # check all the things
+            # is there a row such that only one square has candidate val?
+            row = i
+            cdict = {}
+            for col in range(9):
+                if can[row][col][val]:
+                    cdict[col]=col
+                if len(cdict)>1:
+                    break
+            if len(cdict)==1: # yup!
+                col = next(iter(cdict))
+                easydict[ ('SINGLE', row, col, val) ] = 1
+
+            # is there a col such that only one square has candidate val?
+            col = i
+            rdict = {}
+            for row in range(9):
+                if can[row][col][val]:
+                    rdict[row]=row
+                if len(rdict)>1:
+                    break
+            if len(rdict)==1: # yup!
+                row = next(iter(rdict))
+                easydict[ ('SINGLE', row, col, val) ] = 1
+
+            # is there a block such that only one square has candidate val?
+            br = i//3
+            bc = i%3
+            bdict = {}
+            for ii in range(9):
+                rr = ii//3
+                cc = ii%3
+                if can[br*3+rr][bc*3+cc][val]:
+                    bdict[ii]=ii
+                    if len(bdict)>1:
                         break
-                    which = i
-            if count==1:
-                rcis.append( ('SINGLE', r,c,which) )
-    return rcis
+            if len(bdict)==1: # yup!
+                ii = next(iter(bdict))
+                row = br*3 + ii//3
+                col = bc*3 + ii%3
+                easydict[ ('SINGLE', row, col, val) ] = 1
+
+    # flatten out to a list
+    return list(easydict.keys())
+
 
 # a spear is a block that has all candidates in the same row
 # or column, which eliminates candidates in 2 other blocks
@@ -225,7 +292,11 @@ def find_forks(can):
     return forks
 
 
-
+def find_moves(puz, can):
+    moves = find_single_candidates(can)
+    moves.extend( find_spears(can) )
+    moves.extend( find_forks(can) )
+    return moves
 
 
 def apply_moves(p, can, moves):
@@ -239,42 +310,33 @@ def apply_moves(p, can, moves):
 
 
 if __name__ == '__main__':
-    puz = SudokuGenerator(difficulty='medium').get_puzzle()
+    puzl = SudokuGenerator(difficulty='easy').get_puzzle()
 
-    puz = ['2..9.1583',
-           '....8..7.',
-           '.83.7.96.',
-           '72...6.35',
-           '..6835.2.',
-           '...7.....',
-           '64..97.5.',
-           '19.3..64.',
-           '3..64219.']
-
-
+    #puz = ['2..9.1583',
+    #       '....8..7.',
+    #       '.83.7.96.',
+    #       '72...6.35',
+    #       '..6835.2.',
+    #       '...7.....',
+    #       '64..97.5.',
+    #       '19.3..64.',
+    #       '3..64219.']
 
     #for row in puz:
     #    print(row)
 
-    gp = gridify(puz)
-    print_it(gp)
-
-    can = all_candidates()
-
-
-
-    #print(can)
-
-    turn_off_candidates(gp, can)
+    sudoku = gridify(puzl)
+    print_it(sudoku)
+    candidates = all_candidates()
 
     while True:
-        onesies = find_single_candidates(can)
-        if len(onesies) == 0:
-            break
-        apply_moves(gp, can, onesies)
-        turn_off_candidates(gp, can)
+        cascade(sudoku, candidates)
+        moves = find_moves(candidates)
+        if (len(moves)==1):
+            print("There is just one move!")
+            print_it(sudoku)
 
-    print_it(gp)
+        apply_
 
 
 

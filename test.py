@@ -3,6 +3,19 @@ import unittest
 from oneclick import *
 
 class OneClickTester(unittest.TestCase):
+
+    def testEasy(s):
+        can = all_candidates(False)
+
+        can[0][1][2] = True
+        ee = find_1_row_col_block(can)
+        s.assertEqual(1, len(ee))
+        eee = ee[0]
+        s.assertEqual('SINGLE', eee[0])
+        s.assertEqual(0, eee[1])
+        s.assertEqual(1, eee[2])
+        s.assertEqual(2, eee[3])
+
     def testSpears(s):
         # test throwing a horizontal spear
         # 111     111
