@@ -304,6 +304,7 @@ def find_moves(can):
     moves = find_1_row_col_block(can)
     moves.extend( find_spears(can) )
     moves.extend( find_forks(can) )
+    moves.extend( find_subsets_2(can) )
     return moves
 
 
@@ -313,14 +314,62 @@ def apply_move(puz, can, mov):
         puz[r][c] = i      # set it into the puzzle
         for v in range(9): # erase all candidates
             can[r][c][v] = False
-    elif t == 'SPEAR' or t == 'FORK' or t == 'SUBSET':
+    elif t == 'SPEAR' or t == 'FORK' or t == '2SET':
         can[r][c][i] = False # turn it off
+
+# instead of an array of 9x True/False per [r][c], have each [r][c]
+# hold a set of viable candidates; hopefully will make more performant
+def candisets(candidates):
+    emptyrow = []
+    for i in range(9):
+        emptyrow.append(set())
+    cs = []
+    for i in range(9):
+        cs.append(copy.deepcopy(emptyrow))
+
+    for r in range(9):
+        for c in range(9):
+            for v in range(9):
+                if candidates[r][c][v]:
+                    cs[r][c].add(v)
+    return cs
+
+
+def find_subsets_2(can):
+    moves = []
+
+    cs = candisets(can)
+
+    # in any row/col/block i, are there 2 cells with exactly the same 2 candidates?
+    for i in range(9):
+        for rcs in ( row_indices(i), col_indices(i), box_indices(i//3,i%3)):
+            rcs2 = []
+            for r,c in rcs:
+                if len(cs[r][c])==2:
+                    rcs2.append( (r,c) )
+            if len(rcs2)<2:
+                continue
+
+            for j in range(len(rcs2)):
+                rj,cj = rcs2[j]
+                for k in range(j+1, len(rcs2)):
+                    rk,ck = rcs2[k]
+                    if cs[rj][cj] == cs[rk][ck]:
+                        twoset = cs[rj][cj]
+                        for r,c in rcs:
+                            if r==rj and c==cj: continue
+                            if r==rk and c==ck: continue
+                            for v in twoset:
+                                if can[r][c][v]:
+                                    moves.append( ('2SET', r, c, v) )
+
+    return  moves
 
 
 if __name__ == '__main__':
     puzl = SudokuGenerator(difficulty='hard').get_puzzle()
 
-    #puz = ['2..9.1583',
+    #puzl = ['2..9.1583',
     #       '....8..7.',
     #       '.83.7.96.',
     #       '72...6.35',
@@ -329,6 +378,17 @@ if __name__ == '__main__':
     #       '64..97.5.',
     #       '19.3..64.',
     #       '3..64219.']
+
+    # sudokuslam.com medium puzzle mid-solve, only available moves are 'hard'
+    puzl = ['861349725',
+            '273568491',
+            '495..2638',
+           '..6...8..',
+            '......9..',
+            '..8.5.1.2',
+            '.8..3527.',
+            '.5...6384',
+            '.....751.']
 
     #for row in puz:
     #    print(row)

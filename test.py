@@ -75,4 +75,22 @@ class OneClickTester(unittest.TestCase):
 
         s.assertEqual(12, len(ff))
 
+
+    def test2subsets(s):
+        can = all_candidates(False)
+        # aaa 12aa a12a
+        for c in range(9):
+            if c==3 or c==7:
+                can[0][c][1]=True
+                can[0][c][2]=True
+            else:
+                for v in range(9):
+                    can[0][c][v]=True
+
+        ss = find_subsets_2(can)
+        # remove all the 1 and 2 candidates from 7 boxes
+        s.assertEqual(14, len(moves))
+
+
+
 unittest.main()
