@@ -404,12 +404,14 @@ def apply_move(puz, can, mov):
         puz[r][c] = i      # set it into the puzzle
         for v in range(9): # erase all candidates
             can[r][c][v] = False
-    elif t == 'SPEAR' or t == 'FORK' or t == '2SET':
+    elif t == 'SPEAR' or t == 'FORK' or t == '2SET' or t == '3SET':
         can[r][c][i] = False # turn it off
 
 
 if __name__ == '__main__':
-    puzl = SudokuGenerator(difficulty='medium').get_puzzle()
+  founit = False
+  while not founit:
+    puzl = SudokuGenerator(difficulty='hard').get_puzzle()
 
     # sudokuslam.com medium puzzle mid-solve
     # involves 'hard' (both 2SET and 3SET moves)
@@ -463,12 +465,20 @@ if __name__ == '__main__':
                 print("There is just one move!")
                 print_puzzle(sudoku)
                 print_candidates(candidates)
+                copy_puz = copy.deepcopy(sudoku)
+                copy_can = copy.deepcopy(candidates)
+
             apply_move(sudoku, candidates, moves[0])
 
             cascade(sudoku, candidates)
             if done(sudoku):
                 if onemove:
                     print('Single move triggered winning cascade!')
+                    founit=True
                 print('All done!')
                 print_puzzle(sudoku)
                 break
+
+  print("Here's what I found:")
+  print_puzzle(copy_puz)
+  print_candidates(copy_can)
